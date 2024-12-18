@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>画像の編集</title>
+</head>
+<body>
+    <h1>画像に矩形を追加</h1>
+    <canvas id="imageCanvas"></canvas>
+    <form id="saveForm" method="POST">
+        <input type="hidden" id="filename" value="{{ filename }}">
+        <input type="hidden" id="rectangles" name="rectangles">
+        <button type="submit">矩形情報を保存</button>
+    </form>
+
+    <script>
+        const canvas = document.getElementById("imageCanvas");
+        const ctx = canvas.getContext("2d");
+        const image = new Image();
+        image.src = "/uploads/{{ filename }}";
+
+        let rectangles = [];
+        let startX, startY, isDrawing = false;
+
+        image.onload = () => {
+            canvas.width = image.width;
+            canvas.height = image.height;
+            ctx.drawImage(image, 0, 0);
+        };
+
+        // 矩形をすべて再描画
+        function redrawRectangles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(image, 0, 0);
+            ctx.strokeStyle = "red";
+            ctx.lineWidth = 2;
+            rectangles.forEach(rect => {
+                ctx.strokeRect(rect.left, rect.top, rect.width, rect.height);
+            });
+        }
+
+        canvas.addEventListener("mousedown", (e) => {
+            startX = e.offsetX;
+            startY = e.offsetY;
+            isDrawing = true;
+        });
+
+        canvas.addEventListener("mousemove", (e) => {
+            if (!isDrawing) return;
+            const currentX = e.offsetX;
+            const currentY = e.offsetY;
+
+            // 既存の矩形を再描画しつつ、現在の矩形も描画
+            redrawRectangles();
+            ctx.strokeStyle = "blue";  // 現在の矩形は青色で区別
+            ctx.lineWidth = 2;
+            ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+        });
+
+        canvas.addEventListener("mouseup", (e) => {
+            if (!isDrawing) return;
+            const endX = e.offsetX;
+            const endY = e.offsetY;
+            isDrawing = false;
+
+            // 矩形情報の保存
+            rectangles.push({
+                left: Math.min(startX, endX),
+                top: Math.min(startY, endY),
+                width: Math.abs(endX - startX),
+                height: Math.abs(endY - startY)
+            });
+
+            redrawRectangles();  // 最終的な状態を再描画
+        });
+
+        document.getElementById("saveForm").addEventListener("submit", (e) => {
+            e.preventDefault();
+            fetch("/save_rectangles", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    filename: document.getElementById("filename").value,
+                    rectangles: rectangles
+                })
+            }).then(res => res.json()).then(data => {
+                alert(data.message);
+            });
+        });
+    </script>
+</body>
+</html>

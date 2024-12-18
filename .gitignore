@@ -1,0 +1,16 @@
+# Python関連ファイル
+__pycache__/
+*.pyc
+*.pyo
+
+# 仮想環境のフォルダ名
+web_app_env/
+
+# 環境変数ファイル
+.env
+
+# ログファイル
+*.log
+
+# IDE固有の設定ファイル (例: VSCode)
+.vscode/
