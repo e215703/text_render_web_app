@@ -4,6 +4,7 @@ import os
 import json
 from PIL import Image, ImageDraw, ImageFont, ImageStat
 import uuid
+import math
 
 # Flaskアプリケーションの設定
 app = Flask(__name__)
@@ -64,14 +65,29 @@ def save_rectangles():
     # フォントのパス設定
     font_path = os.path.join(app.root_path, "fonts", "Arial.ttf")
 
+    rect_data = {}
+    rect_count = 0
+
     for idx, rect in enumerate(rectangles, start=1):
         left = rect['left']
         top = rect['top']
         width = rect['width']
         height = rect['height']
+        font_size = math.floor(height * (3 / 4))
+        rect_count += 1
 
-        # フォントサイズを矩形の高さの60%に設定し、最小サイズを24にする
-        font_size = max(24, int(height * 0.6))
+        rect_data[f"element{rect_count}"] = [
+            {
+                "text": "",
+                "font": "",
+                "font_size": font_size,
+                "left": left,
+                "top": top,
+                "width": width,
+                "height": height,
+                "color": "[R, G, B]"
+            }
+        ]
 
         try:
             font = ImageFont.truetype(font_path, size=font_size)
@@ -93,7 +109,7 @@ def save_rectangles():
     # 矩形情報をJSONに保存
     output_json_path = os.path.join(app.config['UPLOAD_FOLDER'], f'rect_{base_filename}_{unique_id}.json')
     with open(output_json_path, 'w') as f:
-        json.dump(rectangles, f, indent=4)
+        json.dump(rect_data, f, indent=4)
     
     return jsonify({"message": "矩形情報と画像が保存されました。", "saved_image": new_filename})
 
