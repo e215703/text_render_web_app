@@ -10,6 +10,8 @@
     <form id="saveForm" method="POST">
         <input type="hidden" id="filename" value="{{ filename }}">
         <input type="hidden" id="rectangles" name="rectangles">
+        <label for="userIntention">プロンプトを入力してください:</label>
+        <input type="text" id="userIntention" name="userIntention" placeholder="プロンプトを入力" required>
         <button type="submit">矩形情報を保存</button>
     </form>
 
@@ -83,7 +85,8 @@
                 },
                 body: JSON.stringify({
                     filename: document.getElementById("filename").value,
-                    rectangles: rectangles
+                    rectangles: rectangles,
+                    userIntention: document.getElementById("userIntention").value
                 })
             }).then(res => res.json()).then(data => {
                 alert(data.message);

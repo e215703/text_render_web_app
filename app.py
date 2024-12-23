@@ -50,6 +50,7 @@ def save_rectangles():
     data = request.json
     filename = data['filename']
     rectangles = data['rectangles']
+    user_intention = data.get('userIntention', '')  # プロンプトを取得
 
     # 元の画像パスと保存用の新しいファイルパスを決定
     original_image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -65,7 +66,7 @@ def save_rectangles():
     # フォントのパス設定
     font_path = os.path.join(app.root_path, "fonts", "Arial.ttf")
 
-    rect_data = {}
+    rect_data = {"user_intention": user_intention}  # プロンプトをJSONに追加
     rect_count = 0
 
     for idx, rect in enumerate(rectangles, start=1):
@@ -108,8 +109,8 @@ def save_rectangles():
 
     # 矩形情報をJSONに保存
     output_json_path = os.path.join(app.config['UPLOAD_FOLDER'], f'rect_{base_filename}_{unique_id}.json')
-    with open(output_json_path, 'w') as f:
-        json.dump(rect_data, f, indent=4)
+    with open(output_json_path, 'w', encoding='utf-8') as f:
+        json.dump(rect_data, f, ensure_ascii=False, indent=4)
     
     return jsonify({"message": "矩形情報と画像が保存されました。", "saved_image": new_filename})
 
