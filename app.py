@@ -5,6 +5,16 @@ import json
 from PIL import Image, ImageDraw, ImageFont, ImageStat
 import uuid
 import math
+from dotenv import load_dotenv
+import openai
+from openai import OpenAI
+import base64
+import re
+
+# 環境変数の読み込み
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+openai.api_key = OPENAI_API_KEY
 
 # Flaskアプリケーションの設定
 app = Flask(__name__)
@@ -20,6 +30,66 @@ def get_complementary_color(rgb):
     r, g, b = rgb
     return (255 - r, 255 - g, 255 - b)
 
+# 画像をBase64エンコード
+def encode_image(image_path):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode('utf-8')
+
+# JSONを上書き保存
+def update_json(json_path, new_data):
+    with open(json_path, 'r+', encoding='utf-8') as file:
+        original_data = json.load(file)
+        original_data.update(new_data)
+        file.seek(0)
+        json.dump(original_data, file, ensure_ascii=False, indent=4)
+        file.truncate()
+
+# OpenAI APIのレスポンスをクリーニングして辞書型に変換
+def clean_and_parse_json(response_text):
+    cleaned_text = re.sub(r'^```json|```$', '', response_text, flags=re.MULTILINE).strip()
+    try:
+        return json.loads(cleaned_text)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON format: {e}")
+
+# OpenAI APIを呼び出す
+def fetch_openai_response(image_path, json_path):
+    with open(json_path, 'r', encoding='utf-8') as file:
+        user_prompt = file.read()
+    base64_image = encode_image(image_path)
+    # Initialize the OpenAI client
+    client = OpenAI()
+    response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {
+            "role": "system",
+            "content": """あなたは優れたコピーライターであり優れたデザイナーでもあります。広告、マーケティング、ソーシャルメディアの文章を効果的に記述し、配置することができます。 ユーザーはあなたに背景画像と共に、どのようなグラフィックデザイン画像を作成したいかという指示を与えます。 あなたはユーザーの指示を聞き、デザイン画像に含める日本語の文章を考え、それらを効果的に配置するためのjsonファイルを出力します。
+            textはテキストボックス内に表示するテキストです。ユーザーの指示を聞き、最適な日本語の単語、文書を記述してください。文字数は以下の計算式から求められる値を参考にしてください。 n = round(width / height * 1.25)。また、改行はしてはいけません。
+            fontは使用するフォントを表しており、画像の雰囲気や、テキストの内容にあったフォントを選択する必要があります。具体的には以下の４つの中から選択してください。 フォーマルな印象を与えたい: ipam.ttf 親しみやすさを重視:, rounded-mplus-1p-regular.ttf, 多言語に対応する場面: NotoSansJP-Regular.ttf, デジタルメディア向け: MPLUS1p-Regular.ttf
+            text, fontは各テキストボックスごとに考えてください。
+            出力は'{'ではじまり、'}'で終わる形式にしてください。
+            """
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": user_prompt
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{base64_image}"
+                    }
+                }
+            ]
+        }
+    ],
+)
+    print (response.choices[0].message.content)
+    return clean_and_parse_json(response.choices[0].message.content)
 # ルートページ
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
@@ -112,12 +182,30 @@ def save_rectangles():
     with open(output_json_path, 'w', encoding='utf-8') as f:
         json.dump(rect_data, f, ensure_ascii=False, indent=4)
     
-    return jsonify({"message": "矩形情報と画像が保存されました。", "saved_image": new_filename})
+    return jsonify({
+        "message": "矩形情報と画像が保存されました。",
+        "saved_image": new_filename,
+        "saved_json": f"rect_{base_filename}_{unique_id}.json"
+    })
 
 # 画像の表示エンドポイント
 @app.route('/uploads/<filename>')
 def display_image(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# OpenAI APIを呼び出して補完を実行するエンドポイント
+@app.route('/process', methods=['POST'])
+def process():
+    image_filename = request.form['image_filename']
+    json_filename = request.form['json_filename']
+    image_path = os.path.join(app.config['UPLOAD_FOLDER'], image_filename)
+    json_path = os.path.join(app.config['UPLOAD_FOLDER'], json_filename)
+    try:
+        result = fetch_openai_response(image_path, json_path)
+        update_json(json_path, result)
+        return '', 204  # 成功時に空のレスポンスを返す
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)

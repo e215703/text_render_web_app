@@ -15,6 +15,12 @@
         <button type="submit">矩形情報を保存</button>
     </form>
 
+    <form id="processForm" method="POST" action="/process">
+        <input type="hidden" name="image_filename" value="{{ filename }}">
+        <input type="hidden" name="json_filename" id="json_filename">
+        <button type="submit">OpenAIで補完</button>
+    </form>
+
     <script>
         const canvas = document.getElementById("imageCanvas");
         const ctx = canvas.getContext("2d");
@@ -88,9 +94,11 @@
                     rectangles: rectangles,
                     userIntention: document.getElementById("userIntention").value
                 })
-            }).then(res => res.json()).then(data => {
-                alert(data.message);
-            });
+            }).then(response => response.json())
+              .then(data => {
+                  alert(data.message);
+                  document.getElementById("json_filename").value = data.saved_json;  // JSONファイル名を設定
+              });
         });
     </script>
 </body>
