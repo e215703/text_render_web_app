@@ -1,14 +1,21 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>画像アップロード</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Image</title>
 </head>
 <body>
-    <h1>画像をアップロード</h1>
-    <form method="POST" enctype="multipart/form-data">
-        <input type="file" name="file" required>
-        <button type="submit">アップロード</button>
+    <h1>画像をアップロードしてください</h1>
+    <form id="uploadForm" action="/" method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" id="fileInput" accept="image/png, image/jpeg, image/jpg" required>
     </form>
+
+    <script>
+        // ファイル選択時にフォームを送信
+        document.getElementById('fileInput').addEventListener('change', function() {
+            document.getElementById('uploadForm').submit();
+        });
+    </script>
 </body>
 </html>
