@@ -95,6 +95,7 @@ def fetch_openai_response(image_path, json_path):
     print (response.choices[0].message.content) 
     return clean_and_parse_json(response.choices[0].message.content)
 
+# SVG生成関数
 def generate_svg(json_path, background_image_path, output_path):
 
     # JSONファイルの読み込み
@@ -118,40 +119,48 @@ def generate_svg(json_path, background_image_path, output_path):
 
     font_directory = "./static/fonts"
 
-    for key, value in data.items():
-        # "user_intention" のキーを無視する
+    for key in data:
         if key == "user_intention":
             continue
+        element = data[key][0]
+        text = element["text"]
+        font_file = element["font"]
+        font_size = element["font_size"]
+    # colorの処理
+        color_value = element["color"]
+        if isinstance(color_value, str):
+            color = tuple(map(int, color_value.strip("[]").split(",")))
+        elif isinstance(color_value, list):
+            color = tuple(color_value)
+        else:
+            raise ValueError(f"Unexpected color format: {color_value}")        
+        
+        left, top, width, height = element["left"], element["top"], element["width"], element["height"]
 
-        # valueがリストの場合に処理を進める
-        if isinstance(value, list) and len(value) > 0:
-            element = value[0]
-            text = element["text"]
-            font_file = element["font"]
-            font_size = element["font_size"]
-            color = tuple(map(int, element["color"].strip("[]").split(",")))  # 色をリストからタプルに変換
-            left = element["left"]
-            top = element["top"]
-            width = element["width"]
-            height = element["height"]
+        # フォントの読み込み
+        font_path = os.path.join(font_directory, font_file)
+        if not os.path.exists(font_path):
+            raise FileNotFoundError(f"Font file not found: {font_path}")
 
-            # テキスト位置の計算
-            text_width = font_size * len(text) * 0.5  # 簡易的な計算
-            text_x = left + (width - text_width) / 2
-            text_y = top + (height - font_size) / 2 + font_size * 0.75
+        # テキスト位置の計算
+        font = ImageFont.truetype(font_path, size=font_size)
 
-            # SVGにテキストを追加
-            text_layer = dwg.g(id=key)
-            text_layer.add(dwg.text(
-                text,
-                insert=(text_x, text_y),
-                fill=rgb(*color),
-                font_size=font_size,
-                font_family=font_file.split('.')[0]
-            ))
-            dwg.add(text_layer)
+        text_bbox = font.getbbox(text)
+        text_width = text_bbox[2] - text_bbox[0]  # バウンディングボックスの幅
+        text_height = text_bbox[3] - text_bbox[1]  # バウンディングボックスの高さ
+        text_x = left + (width - text_width) / 2
+        text_y = top + (height - text_height) / 2 + font_size * 0.75
 
-    # SVGファイルを保存
+        text_layer = dwg.g(id=key)
+        text_layer.add(dwg.text(
+            text,
+            insert=(text_x, text_y),
+            fill=rgb(*color),
+            font_size=font_size,
+            font_family=font_file.split('.')[0]
+        ))
+        dwg.add(text_layer)
+
     dwg.save()
 
 # ルートページ

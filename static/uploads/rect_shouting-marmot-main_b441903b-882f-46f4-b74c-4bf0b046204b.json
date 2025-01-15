@@ -1,0 +1,27 @@
+{
+    "user_intention": "環境保全を訴えるポスター",
+    "element1": [
+        {
+            "text": "未来を守ろう",
+            "font": "ipam.ttf",
+            "font_size": 66,
+            "left": 159,
+            "top": 199,
+            "width": 822,
+            "height": 89,
+            "color": "[34, 139, 34]"
+        }
+    ],
+    "element2": [
+        {
+            "text": "私たちの行動が地球を救う",
+            "font": "rounded-mplus-1p-regular.ttf",
+            "font_size": 42,
+            "left": 49,
+            "top": 641,
+            "width": 1075,
+            "height": 57,
+            "color": "[255, 255, 255]"
+        }
+    ]
+}
