@@ -21,6 +21,13 @@
         <button type="submit">OpenAIで補完</button>
     </form>
 
+    <!-- SVG生成用フォーム -->
+    <form id="svgForm" method="POST">
+        <button type="button" id="generateSvg">SVGを生成</button>
+    </form>
+    <div id="svgPreview"></div>
+    <a id="downloadSvg" href="#" download>SVGをダウンロード</a>
+
     <script>
         const canvas = document.getElementById("imageCanvas");
         const ctx = canvas.getContext("2d");
@@ -99,6 +106,32 @@
                   alert(data.message);
                   document.getElementById("json_filename").value = data.saved_json;  // JSONファイル名を設定
               });
+        });
+
+        // SVG生成ボタンのイベント
+        document.getElementById("generateSvg").addEventListener("click", function() {
+            const data = {
+                json_filename: document.getElementById("json_filename").value,
+                image_filename: document.getElementById("filename").value
+            };
+            fetch('/generate_svg', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    // SVGプレビューとダウンロードリンクの設定
+                    const svgUrl = data.svg_url;
+                    const svgPreview = document.getElementById("svgPreview");
+                    svgPreview.innerHTML = `<img src="${svgUrl}" alt="SVG Preview">`;
+                    const downloadLink = document.getElementById("downloadSvg");
+                    downloadLink.href = svgUrl;
+                }
+            });
         });
     </script>
 </body>

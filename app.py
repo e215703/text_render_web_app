@@ -10,6 +10,9 @@ import openai
 from openai import OpenAI
 import base64
 import re
+from io import BytesIO  # バイトストリーム操作のため
+import svgwrite  # SVGファイル生成のため
+from svgwrite import rgb  # SVGでの色指定のため
 
 # 環境変数の読み込み
 load_dotenv()
@@ -88,8 +91,69 @@ def fetch_openai_response(image_path, json_path):
         }
     ],
 )
-    print (response.choices[0].message.content)
+    # print文はあとで消そう
+    print (response.choices[0].message.content) 
     return clean_and_parse_json(response.choices[0].message.content)
+
+def generate_svg(json_path, background_image_path, output_path):
+
+    # JSONファイルの読み込み
+    with open(json_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    # 背景画像の読み込み
+    background_image = Image.open(background_image_path).convert("RGBA")
+    bg_width, bg_height = background_image.size
+
+    # 画像をBase64エンコード
+    buffered = BytesIO()
+    background_image.save(buffered, format="PNG")
+    image_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+    # SVG作成
+    dwg = svgwrite.Drawing(output_path, profile='full', size=(bg_width, bg_height))
+    background_layer = dwg.g(id="background")
+    background_layer.add(dwg.image(href='data:image/png;base64,' + image_base64, insert=(0, 0), size=(bg_width, bg_height)))
+    dwg.add(background_layer)
+
+    font_directory = "./static/fonts"
+
+    for key, value in data.items():
+        # "user_intention" のキーを無視する
+        if key == "user_intention":
+            continue
+
+        # valueがリストの場合に処理を進める
+        if isinstance(value, list) and len(value) > 0:
+            element = value[0]
+            text = element["text"]
+            font_file = element["font"]
+            font_size = element["font_size"]
+            color = tuple(map(int, element["color"].strip("[]").split(",")))  # 色をリストからタプルに変換
+            left = element["left"]
+            top = element["top"]
+            width = element["width"]
+            height = element["height"]
+
+            # テキスト位置の計算
+            text_width = font_size * len(text) * 0.5  # 簡易的な計算
+            text_x = left + (width - text_width) / 2
+            text_y = top + (height - font_size) / 2 + font_size * 0.75
+
+            # SVGにテキストを追加
+            text_layer = dwg.g(id=key)
+            text_layer.add(dwg.text(
+                text,
+                insert=(text_x, text_y),
+                fill=rgb(*color),
+                font_size=font_size,
+                font_family=font_file.split('.')[0]
+            ))
+            dwg.add(text_layer)
+
+    # SVGファイルを保存
+    dwg.save()
+
 # ルートページ
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
@@ -204,6 +268,26 @@ def process():
         result = fetch_openai_response(image_path, json_path)
         update_json(json_path, result)
         return '', 204  # 成功時に空のレスポンスを返す
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# SVG生成用エンドポイント
+@app.route('/generate_svg', methods=['POST'])
+def generate_svg_endpoint():
+    data = request.json
+    json_filename = data['json_filename']
+    image_filename = data['image_filename']
+    json_path = os.path.join(app.config['UPLOAD_FOLDER'], json_filename)
+    image_path = os.path.join(app.config['UPLOAD_FOLDER'], image_filename)
+    svg_filename = f"{os.path.splitext(json_filename)[0]}.svg"
+    svg_path = os.path.join(app.config['UPLOAD_FOLDER'], svg_filename)
+
+    try:
+        generate_svg(json_path, image_path, svg_path)
+        return jsonify({
+            "message": "SVGファイルが生成されました。",
+            "svg_url": url_for('display_image', filename=svg_filename)
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
