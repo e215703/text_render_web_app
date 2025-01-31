@@ -69,7 +69,7 @@ def fetch_openai_response(image_path, json_path):
             "role": "system",
             "content": """あなたは優れたコピーライターであり優れたデザイナーでもあります。広告、マーケティング、ソーシャルメディアの文章を効果的に記述し、配置することができます。 ユーザーはあなたに背景画像と共に、どのようなグラフィックデザイン画像を作成したいかという指示を与えます。 あなたはユーザーの指示を聞き、デザイン画像に含める日本語の文章を考え、それらを効果的に配置するためのjsonファイルを出力します。
             textはテキストボックス内に表示するテキストです。ユーザーの指示を聞き、最適な日本語の単語、文書を記述してください。文字数は以下の計算式から求められる値を参考にしてください。 n = round(width / height * 1.25)。また、改行はしてはいけません。
-            fontは使用するフォントを表しており、画像の雰囲気や、テキストの内容にあったフォントを選択する必要があります。具体的には以下の４つの中から選択してください。 フォーマルな印象を与えたい: ipam.ttf 親しみやすさを重視:, rounded-mplus-1p-regular.ttf, 多言語に対応する場面: NotoSansJP-Regular.ttf, デジタルメディア向け: MPLUS1p-Regular.ttf
+            fontは使用するフォントを表しており、画像の雰囲気や、テキストの内容にあったフォントを選択する必要があります。具体的には以下の4つの中から選択してください。 フォーマルな印象を与えたい: ipam.ttf 親しみやすさを重視:, rounded-mplus-1p-regular.ttf, 多言語に対応する場面: NotoSansJP-Regular.ttf, デジタルメディア向け: MPLUS1p-Regular.ttf
             text, fontは各テキストボックスごとに考えてください。
             出力は'{'ではじまり、'}'で終わる形式にしてください。
             """
@@ -297,6 +297,29 @@ def generate_svg_endpoint():
             "message": "SVGファイルが生成されました。",
             "svg_url": url_for('display_image', filename=svg_filename)
         })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/download_svg/<filename>', methods=['GET'])
+def download_svg(filename):
+    # ダウンロード用のSVGファイルを指定
+    svg_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if not os.path.exists(svg_path):
+        return jsonify({"error": "SVG file not found"}), 404
+
+    # ファイルを返却する
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+
+@app.route('/cleanup_uploads', methods=['POST'])
+def cleanup_uploads():
+    upload_folder = app.config['UPLOAD_FOLDER']
+    try:
+        for filename in os.listdir(upload_folder):
+            file_path = os.path.join(upload_folder, filename)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+                print(f"Deleted: {file_path}")
+        return jsonify({"message": "Uploads folder cleaned up."})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

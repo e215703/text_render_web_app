@@ -26,7 +26,15 @@
         <button type="button" id="generateSvg">SVGを生成</button>
     </form>
     <div id="svgPreview"></div>
-    <a id="downloadSvg" href="#" download>SVGをダウンロード</a>
+    <button type="button" id="downloadSvg">SVGをダウンロード</button>
+
+    <!-- ルート画面に戻るボタン -->
+    <button type="button" id="goHome">ルート画面に戻る</button>
+
+    <!-- オーバーレイとスピナー -->
+    <div id="overlay">
+        <div class="spinner"></div>
+    </div>
 
     <script>
         const canvas = document.getElementById("imageCanvas");
@@ -111,8 +119,8 @@
         // SVG生成ボタンのイベント
         document.getElementById("generateSvg").addEventListener("click", function() {
             const data = {
-                json_filename: document.getElementById("json_filename").value,
-                image_filename: document.getElementById("filename").value
+                json_filename: document.getElementById('json_filename').value,
+                image_filename: document.getElementById('filename').value
             };
             fetch('/generate_svg', {
                 method: 'POST',
@@ -124,14 +132,51 @@
                 if (data.error) {
                     alert(data.error);
                 } else {
-                    // SVGプレビューとダウンロードリンクの設定
+                    // SVGプレビューを表示
                     const svgUrl = data.svg_url;
-                    const svgPreview = document.getElementById("svgPreview");
+                    const svgPreview = document.getElementById('svgPreview');
                     svgPreview.innerHTML = `<img src="${svgUrl}" alt="SVG Preview">`;
-                    const downloadLink = document.getElementById("downloadSvg");
-                    downloadLink.href = svgUrl;
+
+                    // ダウンロードリンクのURLを設定
+                    document.getElementById('downloadSvg').dataset.url = svgUrl;
                 }
             });
+        });
+
+        // SVGダウンロードボタンのイベント
+        document.getElementById("downloadSvg").addEventListener("click", function() {
+            const svgUrl = this.dataset.url;
+            if (!svgUrl) {
+                alert("先にSVGを生成してください！");
+                return;
+            }
+
+            // ダウンロードをトリガー
+            fetch(svgUrl)
+                .then(response => response.blob())
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = svgUrl.split('/').pop(); // ファイル名を設定
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url); // URLを解放
+                });
+        });
+
+        // ルート画面に戻るボタンのイベント
+        document.getElementById("goHome").addEventListener("click", function() {
+            fetch('/cleanup_uploads', {
+                method: 'POST',
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data.message);
+                window.location.href = "/";
+            })
+            .catch(error => console.error("Error cleaning up uploads:", error));
         });
     </script>
 </body>
