@@ -18,18 +18,18 @@
     <form id="processForm" method="POST" action="/process">
         <input type="hidden" name="image_filename" value="{{ filename }}">
         <input type="hidden" name="json_filename" id="json_filename">
-        <button type="submit">OpenAIで補完</button>
+        <button type="submit">AIでテキストを補完</button>
     </form>
 
     <!-- SVG生成用フォーム -->
     <form id="svgForm" method="POST">
-        <button type="button" id="generateSvg">SVGを生成</button>
+        <button type="button" id="generateSvg">画像を表示</button>
     </form>
     <div id="svgPreview"></div>
-    <button type="button" id="downloadSvg">SVGをダウンロード</button>
+    <button type="button" id="downloadSvg">画像をダウンロード</button>
 
     <!-- ルート画面に戻るボタン -->
-    <button type="button" id="goHome">ルート画面に戻る</button>
+    <button type="button" id="goHome">ホーム画面に戻る</button>
 
     <!-- オーバーレイとスピナー -->
     <div id="overlay">
